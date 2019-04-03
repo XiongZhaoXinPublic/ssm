@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd
+          http://www.springframework.org/schema/mvc
+        http://www.springframework.org/schema/mvc/spring-mvc.xsd
+        ">
+        
+        <context:component-scan base-package="cn.yq.ssm"/>
+        <!-- 获取数据库的db配置文件 -->
+        <context:property-placeholder location="classpath:db.properties"/>
+        <!-- 配置连接池 -->
+        <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource"
+        init-method="init" destroy-method="close">
+        	<property name="driverClassName" value="${jdbc.driverClassName}"/>	
+			<property name="url" value="${jdbc.url}"/>	
+			<property name="username" value="${jdbc.username}"/>
+			<property name="password" value="${jdbc.password}"/>
+			<property name="maxActive" value="${jdbc.maxActive}"/>
+        </bean>
+        <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        	 <!-- 1.注入数据源（连接池） -->
+        	 <property name="dataSource" ref="dataSource"></property>	
+        	  <!-- 2.别名的配置,使用包扫描 -->
+        	 <property name="typeAliasesPackage" value="cn.yq.ssm.pojo"></property>
+        	 <!-- 3.配置映射文件 -->
+        	 <property name="mapperLocations">
+        	 	<array>
+        	 		<!-- 使用通配符* 配置所有的映射文件 -->
+        	 		<value>classpath:cn/yq/ssm/mapper/*Mapper.xml</value>
+        	 	</array>
+        	 </property>
+        	 <property name="configLocation" value="classpath:mybatis-config.xml"/>
+        </bean>
+           <!-- 创建UserMapper接口的代理对象 -->
+		<bean id="userMapper" class="org.mybatis.spring.mapper.MapperFactoryBean">
+	
+		<!-- 注入SqlSessionFactory工厂对象 -->
+		<property name="sqlSessionFactory" ref="sqlSessionFactory"></property>
+		
+		<!-- 注入被代理接口（UserMapper）的字节码 -->
+		<property name="mapperInterface" value="cn.yq.ssm.mapper.UserMapper"/>
+		</bean>
+		<!-- Mybatis事务配置 -->
+		<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+			<!-- 注入数据源 -->
+			<property name="dataSource" ref="dataSource"></property>
+		</bean>
+		<tx:advice id="txAdvice" transaction-manager="transactionManager">
+			<tx:attributes>
+				<!-- dqm操作 -->
+				<tx:method name="get*" read-only="true" propagation="REQUIRED"/>
+				<tx:method name="select*" read-only="true"/>
+				<tx:method name="find*" read-only="true"/>
+				<tx:method name="query*" read-only="true"/>
+				<tx:method name="list*" read-only="true"/>
+				<!-- dml操作 -->
+				<tx:method name="*" read-only="false"/>
+				</tx:attributes>
+		</tx:advice>
+		<aop:config>
+			<!-- where -->
+			<aop:pointcut expression="execution(* cn.yq.ssm.service.impl..*.*(..))" id="pt"/>
+			<!-- when -->
+			<aop:advisor advice-ref="txAdvice" pointcut-ref="pt"/>
+		</aop:config>        
+        
+        </beans>
